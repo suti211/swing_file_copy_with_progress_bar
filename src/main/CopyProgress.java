@@ -1,6 +1,5 @@
 package main;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Toolkit;
@@ -9,7 +8,13 @@ import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -18,98 +23,65 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.JTextField;
+import javax.swing.JScrollPane;
+import javax.swing.border.BevelBorder;
 
 public class CopyProgress extends JPanel implements ActionListener, PropertyChangeListener {
 
-	private JButton copyButton;
-	private JButton exitButton;
-	private JTextField fromTextField;
-	private JTextField toTextField;
-	private JLabel fromLabel;
-	private JLabel toLabel;
-	private JProgressBar progressBar;
+	private static final long serialVersionUID = 5429504162901231281L;
 
+	private JScrollPane copyListScrollPane;
+	private JButton addNewFileOpration;
+	private JButton copyButton;
+
+	private JButton exitButton;
 	private JFileChooser fChooser;
-	private JButton fromChooserButton;
-	private JButton toChooserButton;
-	
+
 	private JPanel mainContainer;
-	private JPanel fromPanel;
-	private JPanel toPanel;
-	private JPanel progressBarPanel;
-	private JPanel progressPanel;
 	private JPanel buttonPanel;
-	
+	private JPanel addOpPanel;
+	private JPanel copyListPanel;
+
 	private File fromFile;
 	private File toFile;
-
-	FileCopy fileCopy;
+	private Map<FileCopy, JProgressBar> fileOperations;
+	private Map<JButton, FileCopy> operationButtons;
 
 	public CopyProgress() {
-		
+
+		this.fileOperations = new HashMap<FileCopy, JProgressBar>();
+		this.operationButtons = new HashMap<JButton, FileCopy>();
 		this.fChooser = new JFileChooser();
-		this.fromChooserButton = new JButton("...");
-		this.toChooserButton = new JButton("...");
-		
+		this.addNewFileOpration = new JButton("New File");
+
 		this.copyButton = new JButton("Copy");
 		this.exitButton = new JButton("Exit");
-		this.fromTextField = new JTextField();
-		this.toTextField = new JTextField();
-		this.fromLabel = new JLabel("from: ");
-		this.toLabel = new JLabel("to: ");
-		this.progressBar = new JProgressBar(0, 100);
 		this.mainContainer = new JPanel();
-		this.fromPanel = new JPanel();
-		this.toPanel = new JPanel();
-		this.progressBarPanel = new JPanel();
-		this.progressPanel = new JPanel();
 		this.buttonPanel = new JPanel();
+		this.addOpPanel = new JPanel();
+
+		this.copyListPanel = new JPanel();
+		this.copyListScrollPane = new JScrollPane(copyListPanel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+				JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
 		// main container
 		BoxLayout mainLayout = new BoxLayout(mainContainer, BoxLayout.Y_AXIS);
+		BoxLayout listLayout = new BoxLayout(copyListPanel, BoxLayout.Y_AXIS);
 		mainContainer.setLayout(mainLayout);
-		
-		// text fields
-		Dimension textFieldDim = new Dimension(200, 30);
-		fromTextField.setMinimumSize(textFieldDim);
-		fromTextField.setPreferredSize(textFieldDim);
-		toTextField.setMinimumSize(textFieldDim);
-		toTextField.setPreferredSize(textFieldDim);
-		
+		copyListPanel.setLayout(listLayout);
 
-		// from row:
-		BoxLayout fromRowLayout = new BoxLayout(fromPanel, BoxLayout.X_AXIS);
-		fromPanel.add(fromLabel);
-		fromPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-		fromPanel.add(fromTextField);
-		fromPanel.add(fromChooserButton);
-		fromChooserButton.setActionCommand("chooseFrom");
-		fromChooserButton.addActionListener(this);
-		fromPanel.setLayout(fromRowLayout);
-		mainContainer.add(fromPanel);
+		// addOpbutton
+		addNewFileOpration.setActionCommand("newOp");
+		addNewFileOpration.addActionListener(this);
+		addOpPanel.add(addNewFileOpration);
 
-		// to row:
-		BoxLayout toRowLayout = new BoxLayout(toPanel, BoxLayout.X_AXIS);
-		toPanel.add(toLabel);
-		toPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-		toPanel.add(toTextField);
-		toPanel.add(toChooserButton);
-		toChooserButton.setActionCommand("chooseTo");
-		toChooserButton.addActionListener(this);
-		toPanel.setLayout(toRowLayout);
-		mainContainer.add(toPanel);
-		
-		//progress bar
-		FlowLayout progressBarLayout = new FlowLayout();
-		progressBar.setValue(0);
-		progressBar.setStringPainted(true);
-		progressBar.setPreferredSize(new Dimension(220, 30));
-		progressBarPanel.add(progressBar);
-		progressBarPanel.setLayout(progressBarLayout);
-		progressBarLayout.setVgap(30);
-		mainContainer.add(progressBarPanel);
-		
+		// copyList
+		copyListPanel.setPreferredSize(new Dimension(800, 600));
+		copyListScrollPane.setPreferredSize(new Dimension(750, 450));
+
+		mainContainer.add(copyListScrollPane);
+		mainContainer.add(addOpPanel);
+
 		// button row
 		FlowLayout buttonRowLayout = new FlowLayout();
 		buttonPanel.add(copyButton);
@@ -123,7 +95,7 @@ public class CopyProgress extends JPanel implements ActionListener, PropertyChan
 		buttonRowLayout.setVgap(10);
 		buttonPanel.setLayout(buttonRowLayout);
 		mainContainer.add(buttonPanel);
-		
+
 		add(mainContainer);
 	}
 
@@ -133,66 +105,126 @@ public class CopyProgress extends JPanel implements ActionListener, PropertyChan
 		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
 		Dimension windowSize = new Dimension(360, 280);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		//centering the window
-		frame.setLocation((int)(screen.getWidth() / 2) - (int)(windowSize.getWidth() / 2), (int)(screen.getHeight() / 2) - (int)(windowSize.getHeight() / 2));
-		frame.setSize(320, 240);
+		// centering the window
+		frame.setLocation( 300, 100);
+		frame.setSize(800, 600);
 		frame.setTitle("File Copy");
 		newContentPane.setOpaque(true);
 		frame.setContentPane(newContentPane);
+		frame.pack();
+		
 		frame.setVisible(true);
 	}
 
 	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
-		if(evt.getPropertyName() == "progress"){
+		FileCopy fc = (FileCopy) evt.getSource();
+
+		if (evt.getPropertyName() == "progress") {
 			Integer progress = (Integer) evt.getNewValue();
-			progressBar.setValue(progress);
-			System.out.println(progress + "%");
+			fileOperations.get(fc).setValue(progress);
+		}
+		
+		if(fc.isDone()){
+			for(Entry<JButton, FileCopy> entry : operationButtons.entrySet()){
+				if(entry.getValue().equals(fc)){
+					entry.getKey().setEnabled(false);
+					entry.getKey().setText("Done");
+				}
+			}
 		}
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		if(e.getActionCommand().equals("copy")){
-			if(!fromTextField.getText().equals("") && !toTextField.getText().equals("")){
+		if (e.getActionCommand().equals("copy")) {
+			if(fileOperations.size() > 0){
 				copyButton.setEnabled(false);
 				exitButton.setEnabled(true);
-				fileCopy = new FileCopy(fromFile, toFile);
-				fileCopy.addPropertyChangeListener(this);
-				fileCopy.execute();
+
+				for (FileCopy fc : fileOperations.keySet()) {
+					fc.execute();
+				}
+			} else {
+				Toolkit.getDefaultToolkit().beep();
 			}
 		}
-		
-		if(e.getActionCommand().equals("chooseFrom")){
+
+		if (e.getActionCommand().equals("newOp")) {
 			int ret = fChooser.showOpenDialog(CopyProgress.this);
-			
-			if(ret == JFileChooser.APPROVE_OPTION){
+
+			if (ret == JFileChooser.APPROVE_OPTION) {
 				fromFile = fChooser.getSelectedFile();
-				fromTextField.setText(fromFile.getAbsolutePath());
-				System.out.println(fromFile.length());
 			}
-		}
-		
-		if(e.getActionCommand().equals("chooseTo")){
-			int ret = fChooser.showSaveDialog(CopyProgress.this);
-			
-			if(ret == JFileChooser.APPROVE_OPTION){
+
+			ret = fChooser.showSaveDialog(CopyProgress.this);
+
+			if (ret == JFileChooser.APPROVE_OPTION) {
 				toFile = fChooser.getSelectedFile();
-				toTextField.setText(toFile.getAbsolutePath());
 			}
+
+			if (toFile != null && fromFile != null) {
+				FileCopy operation = new FileCopy(fromFile, toFile);
+				operation.addPropertyChangeListener(this);
+
+				JPanel opPanel = new JPanel();
+				JPanel fromPanel = new JPanel();
+				JPanel toPanel = new JPanel();
+				JPanel progressPanel = new JPanel();
+				JLabel fromLabel = new JLabel("From : " + fromFile.getAbsolutePath());
+				JLabel toLabel = new JLabel("To : " + toFile.getAbsolutePath());
+				JButton stopButton = new JButton("Stop");
+				stopButton.setActionCommand("stop");
+				stopButton.addActionListener(this);
+				JProgressBar bar = new JProgressBar(0, 100);
+				bar.setStringPainted(true);
+				bar.setValue(0);
+
+				fromPanel.add(fromLabel);
+				toPanel.add(toLabel);
+				progressPanel.add(bar);
+				progressPanel.add(stopButton);
+
+				BoxLayout bl = new BoxLayout(opPanel, BoxLayout.Y_AXIS);
+				opPanel.setLayout(bl);
+
+				opPanel.add(fromPanel);
+				opPanel.add(toPanel);
+				opPanel.add(progressPanel);
+				opPanel.setSize(100, 100);
+				opPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+				opPanel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
+
+				fileOperations.put(operation, bar);
+				operationButtons.put(stopButton, operation);
+				copyListPanel.add(opPanel);
+				copyListPanel.revalidate();
+				copyListPanel.repaint();
+			}
+			
 		}
 		
-		if(e.getActionCommand().equals("exit")){
+		if(e.getActionCommand().equals("stop")){
+			JButton butt = ((JButton)e.getSource());
+			butt.setText("Interrupted");
+			butt.setEnabled(false);
+			operationButtons.get(butt).cancel(true);
+			System.out.println("stop");
+		}
+
+		if (e.getActionCommand().equals("exit")) {
+			for(FileCopy fc : fileOperations.keySet()){
+				fc.cancel(true);
+			}
 			System.exit(1);
 		}
 	}
-	
+
 	public static void main(String[] args) {
-		javax.swing.SwingUtilities.invokeLater(new Runnable(){
-			public void run(){
+		javax.swing.SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
 				createGui();
 			}
 		});
 	}
 }
-

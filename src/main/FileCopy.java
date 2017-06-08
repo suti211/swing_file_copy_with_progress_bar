@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 
 public class FileCopy extends SwingWorker<Void, Void> {
@@ -28,9 +29,8 @@ public class FileCopy extends SwingWorker<Void, Void> {
 		try {
 
 			if (!to.exists()) {
-				System.out.println("filehozas");
+				//System.out.println("filehozas");
 				to.createNewFile();
-
 			}
 
 			setProgress(0);
@@ -42,9 +42,13 @@ public class FileCopy extends SwingWorker<Void, Void> {
 			byte[] buffer = new byte[1024];
 
 			while ((read = in.read(buffer)) != -1) {
-				counter += read;
-				setProgress((int) (Math.floor((1.0 * counter / length) * 100)));
-				out.write(buffer, 0, read);
+				if(!this.isCancelled()){
+					counter += read;
+					setProgress((int) (Math.floor((1.0 * counter / length) * 100)));
+					out.write(buffer, 0, read);
+				} else {
+					break;
+				}
 			}
 		} catch (IOException e) {
 			// TODO: handle exception
@@ -60,7 +64,6 @@ public class FileCopy extends SwingWorker<Void, Void> {
 		}
 		return null;
 	}
-
 	@Override
 	protected void done() {
 		// MI TÖRTÉNJEN HA KÉSZ
@@ -68,4 +71,5 @@ public class FileCopy extends SwingWorker<Void, Void> {
 		Toolkit.getDefaultToolkit().beep();
 		System.out.println("kész lett ez a szar");
 	}
+
 }
