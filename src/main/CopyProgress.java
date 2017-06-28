@@ -76,7 +76,7 @@ public class CopyProgress extends JPanel implements ActionListener, PropertyChan
 		addOpPanel.add(addNewFileOpration);
 
 		// copyList
-		copyListPanel.setPreferredSize(new Dimension(800, 600));
+//		copyListPanel.setPreferredSize(new Dimension(800, 600));
 		copyListScrollPane.setPreferredSize(new Dimension(750, 450));
 
 		mainContainer.add(copyListScrollPane);
@@ -102,8 +102,6 @@ public class CopyProgress extends JPanel implements ActionListener, PropertyChan
 	private static void createGui() {
 		JFrame frame = new JFrame("Copy, right?");
 		JComponent newContentPane = new CopyProgress();
-		Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-		Dimension windowSize = new Dimension(360, 280);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		// centering the window
 		frame.setLocation( 300, 100);
